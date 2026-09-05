@@ -25,12 +25,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @ConditionalOnClass({ EntityManager.class, EntityScanner.class })
 public class EntityUtil implements ApplicationContextAware {
 
-    public static final Map<String, Class<?>> entityName2ClassMap = new ConcurrentHashMap<>();
+    private static final Map<String, Class<?>> ENTITY_NAME_TO_CLASS = new ConcurrentHashMap<>();
     private static EntityManager entityManager;
     private static EntityScanner entityScanner;
 
     public static Set<EntityType<?>> getEntityTypeList() {
-        return entityManager.getMetamodel().getEntities();
+        return requireEntityManager().getMetamodel().getEntities();
     }
 
     @SuppressWarnings("unchecked")
@@ -40,32 +40,51 @@ public class EntityUtil implements ApplicationContextAware {
 
     public static Set<Class<?>> getAllDomainClass() {
         try {
-            return entityScanner.scan(Entity.class);
+            return requireEntityScanner().scan(Entity.class);
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("failed to scan JPA entities", e);
         }
     }
 
     public static <T> EntityType<T> getEntityType(Class<T> domainClass) {
-        Metamodel metamodel = entityManager.getMetamodel();
+        Metamodel metamodel = requireEntityManager().getMetamodel();
         return metamodel.entity(domainClass);
     }
 
     public static <T> JpaEntityInformation<T, ?> getEntityInformation(Class<T> domainClass) {
-        return JpaEntityInformationSupport.getEntityInformation(domainClass, entityManager);
+        return JpaEntityInformationSupport.getEntityInformation(domainClass, requireEntityManager());
     }
 
     public static Class<?> getDomainClass(String entityName) {
-        return entityName2ClassMap.get(entityName);
+        return ENTITY_NAME_TO_CLASS.get(entityName);
+    }
+
+    private static EntityManager requireEntityManager() {
+        if (entityManager == null) {
+            throw new IllegalStateException("EntityUtil is not initialized");
+        }
+        return entityManager;
+    }
+
+    private static EntityScanner requireEntityScanner() {
+        if (entityScanner == null) {
+            throw new IllegalStateException("EntityUtil is not initialized");
+        }
+        return entityScanner;
     }
 
     @Override
     public void setApplicationContext(@NonNull ApplicationContext applicationContext) throws BeansException {
-        log.info("EntityUtil setApplicationContext");
         EntityUtil.entityManager = applicationContext.getBean(EntityManager.class);
         EntityUtil.entityScanner = new EntityScanner(applicationContext);
-        for (Class<?> domainClass : getAllDomainClass()) {
-            entityName2ClassMap.put(domainClass.getSimpleName(), domainClass);
+        ENTITY_NAME_TO_CLASS.clear();
+        Set<Class<?>> domainClasses = getAllDomainClass();
+        for (Class<?> domainClass : domainClasses) {
+            ENTITY_NAME_TO_CLASS.put(domainClass.getSimpleName(), domainClass);
+        }
+        log.info("{} initialized, entityCount={}", getClass().getSimpleName(), domainClasses.size());
+        if (log.isDebugEnabled()) {
+            log.debug("entities={}", domainClasses.stream().map(Class::getName).toList());
         }
     }
 }

@@ -1,8 +1,8 @@
 package io.github.tcq1007.springbootutils.jpa;
 
-import org.springframework.data.util.Lazy;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import nl.talsmasoftware.lazy4j.Lazy;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.BeansException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -25,50 +25,39 @@ import java.util.concurrent.ConcurrentHashMap;
 @ConditionalOnClass({ JpaRepository.class, EntityManager.class })
 public class JpaRepositoryUtil implements ApplicationContextAware {
 
-    private static final Map<Class<?>, JpaRepository<?, ?>> repositoryCache = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, JpaRepository<?, ?>> REPOSITORY_CACHE = new ConcurrentHashMap<>();
+
     private static Repositories repositories;
     private static ApplicationContext applicationContext;
-    private static final Lazy<EntityManager> entityManager = Lazy.of(() -> applicationContext.getBean(EntityManager.class));
     private static DefaultRepositoryInvokerFactory repositoryInvokerFactory;
+    private static final Lazy<EntityManager> ENTITY_MANAGER =
+            Lazy.of(() -> requireContext().getBean(EntityManager.class));
 
     public static RepositoryInvoker getRepositoryInvoker(Class<?> domainClass) {
-        checkRepositories();
+        requireRepositories();
         return repositoryInvokerFactory.getInvokerFor(domainClass);
     }
 
-    private static void checkRepositories() {
-        if (repositories == null) {
-            throw new IllegalStateException("JpaRepositoryUtil not properly initialized. "
-                    + "Please ensure this bean is managed by Spring and ApplicationContext is set.");
-        }
-    }
-
     public static <T, K> SimpleJpaRepository<T, K> getSimpleJpaRepository(Class<T> domainClass) {
-        checkRepositories();
+        requireRepositories();
         return (SimpleJpaRepository<T, K>) repositories.getRepositoryFor(domainClass).orElse(null);
     }
 
     /**
-     * 鏍规嵁瀹炰綋绫昏幏鍙栧搴旂殑 Repository锛堥渶涓?{@link JpaRepository}锛夈€?     */
+     * 根据实体类获取对应的 Repository（需为 {@link JpaRepository}）。
+     */
     public static <E, ID> JpaRepository<E, ID> getRepository(Class<E> entityClass) {
-        checkRepositories();
-
-        if (!repositories.hasRepositoryFor(entityClass)) {
-            throw new IllegalArgumentException(
-                    String.format("No repository found for entity class: %s. "
-                                    + "Please ensure this class is a valid JPA entity and has a corresponding repository.",
-                            entityClass.getName())
-            );
-        }
-
-        return (JpaRepository<E, ID>) repositoryCache.computeIfAbsent(entityClass, clazz -> {
-            Optional<Object> repositoryOpt = repositories.getRepositoryFor(entityClass);
-            return repositoryOpt
-                    .map(repo -> (JpaRepository<?, ?>) repo)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            String.format("Repository for entity class %s exists but cannot be retrieved.",
-                                    entityClass.getName())
-                    ));
+        requireRepositories();
+        return (JpaRepository<E, ID>) REPOSITORY_CACHE.computeIfAbsent(entityClass, clazz -> {
+            Object repository = repositories.getRepositoryFor(clazz).orElseThrow(() ->
+                    new IllegalArgumentException(
+                            "No repository found for entity class: " + clazz.getName()));
+            if (!(repository instanceof JpaRepository<?, ?> jpaRepository)) {
+                throw new IllegalArgumentException(
+                        "Repository for entity class " + clazz.getName() + " is not a JpaRepository");
+            }
+            log.debug("cached repository {} for {}", repository.getClass().getName(), clazz.getName());
+            return jpaRepository;
         });
     }
 
@@ -76,23 +65,36 @@ public class JpaRepositoryUtil implements ApplicationContextAware {
         try {
             return Optional.of(getRepository(entityClass));
         } catch (IllegalArgumentException e) {
+            log.debug("repository not found for {}", entityClass.getName());
             return Optional.empty();
         }
     }
 
     public static boolean isEntityClass(Class<?> clazz) {
-        if (repositories == null) {
-            return false;
-        }
-        return repositories.hasRepositoryFor(clazz);
+        return repositories != null && repositories.hasRepositoryFor(clazz);
     }
 
     public static void clearCache() {
-        repositoryCache.clear();
+        REPOSITORY_CACHE.clear();
+        log.debug("repository cache cleared");
     }
 
     public static EntityManager entityManager() {
-        return entityManager.get();
+        return ENTITY_MANAGER.get();
+    }
+
+    private static Repositories requireRepositories() {
+        if (repositories == null) {
+            throw new IllegalStateException("JpaRepositoryUtil is not initialized");
+        }
+        return repositories;
+    }
+
+    private static ApplicationContext requireContext() {
+        if (applicationContext == null) {
+            throw new IllegalStateException("JpaRepositoryUtil is not initialized");
+        }
+        return applicationContext;
     }
 
     @Override
@@ -100,5 +102,6 @@ public class JpaRepositoryUtil implements ApplicationContextAware {
         JpaRepositoryUtil.applicationContext = applicationContext;
         JpaRepositoryUtil.repositories = new Repositories(applicationContext);
         JpaRepositoryUtil.repositoryInvokerFactory = new DefaultRepositoryInvokerFactory(repositories);
+        log.info("{} initialized", getClass().getSimpleName());
     }
 }

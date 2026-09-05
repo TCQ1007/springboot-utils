@@ -1,15 +1,20 @@
 package io.github.tcq1007.springbootutils.querydsl;
 
-import io.github.tcq1007.springbootutils.jpa.EntityManagerUtil;
-
 import com.querydsl.core.types.Ops;
+import io.github.tcq1007.springbootutils.jpa.EntityManagerUtil;
 import jakarta.persistence.metamodel.Attribute;
+import org.apache.commons.lang3.ClassUtils;
 
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.time.temporal.Temporal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -32,41 +37,35 @@ public final class DomainQueryCapability {
 
     private static final List<Ops> EQ_OPS = List.of(Ops.EQ, Ops.NE);
 
+    private static final Map<Class<?>, Map<String, List<Ops>>> OPS_CACHE = new ConcurrentHashMap<>();
+
     private DomainQueryCapability() {
     }
 
     public static Map<String, Object> attrs(Class<?> domainClass) throws IntrospectionException {
-        Map<String, Object> map = new ConcurrentHashMap<>();
-        Map<String, Object> attrsmap = new ConcurrentHashMap<>();
+        Map<String, Object> javaTypes = new LinkedHashMap<>();
         for (Attribute<?, ?> attr : attributesOf(domainClass)) {
-            attrsmap.put(attr.getName(), attr.getJavaType().getSimpleName());
+            javaTypes.put(attr.getName(), attr.getJavaType().getSimpleName());
         }
-        map.put("javatype", attrsmap);
-        map.put("opsof", opsOf(domainClass));
-        List<String> nameList = new ArrayList<>();
-        PropertyDescriptor[] propertyDescriptors = Introspector.getBeanInfo(domainClass).getPropertyDescriptors();
-        for (PropertyDescriptor propertyDescriptor : Arrays.stream(propertyDescriptors).toList()) {
-            String name = propertyDescriptor.getName();
-            nameList.add(name + "|" + propertyDescriptor.getReadMethod().getName());
+        List<String> beanInfo = new ArrayList<>();
+        for (PropertyDescriptor descriptor : Introspector.getBeanInfo(domainClass).getPropertyDescriptors()) {
+            if (descriptor.getReadMethod() == null) {
+                continue;
+            }
+            beanInfo.add(descriptor.getName() + "|" + descriptor.getReadMethod().getName());
         }
-        map.put("beanInfo", nameList);
-        return map;
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("javatype", javaTypes);
+        result.put("opsof", opsOf(domainClass));
+        result.put("beanInfo", beanInfo);
+        return result;
     }
 
     /**
-     * fieldName -> 鍙敤 Ops锛堜粎 BASIC 鏍囬噺瀛楁锛?     */
+     * fieldName -> 可用 Ops（仅 BASIC 标量字段）。
+     */
     public static Map<String, List<Ops>> opsOf(Class<?> domainClass) {
-        Map<String, List<Ops>> map = new LinkedHashMap<>();
-        for (Attribute<?, ?> attr : attributesOf(domainClass)) {
-            if (attr.isAssociation() || attr.isCollection()) {
-                continue;
-            }
-            if (attr.getPersistentAttributeType() != Attribute.PersistentAttributeType.BASIC) {
-                continue;
-            }
-            map.put(attr.getName(), opsOfType(attr.getJavaType()));
-        }
-        return Map.copyOf(map);
+        return OPS_CACHE.computeIfAbsent(domainClass, DomainQueryCapability::computeOps);
     }
 
     public static List<Ops> opsOfType(Class<?> type) {
@@ -76,7 +75,8 @@ public final class DomainQueryCapability {
         if (type == boolean.class || type == Boolean.class || type.isEnum()) {
             return EQ_OPS;
         }
-        if (Number.class.isAssignableFrom(wrap(type))
+        Class<?> wrapped = ClassUtils.primitiveToWrapper(type);
+        if (Number.class.isAssignableFrom(wrapped)
                 || type.isPrimitive() && type != boolean.class && type != char.class) {
             return COMPARE_OPS;
         }
@@ -91,28 +91,25 @@ public final class DomainQueryCapability {
         return opsList != null && opsList.contains(ops);
     }
 
+    private static Map<String, List<Ops>> computeOps(Class<?> domainClass) {
+        Map<String, List<Ops>> map = new LinkedHashMap<>();
+        for (Attribute<?, ?> attr : attributesOf(domainClass)) {
+            if (attr.isAssociation() || attr.isCollection()) {
+                continue;
+            }
+            if (attr.getPersistentAttributeType() != Attribute.PersistentAttributeType.BASIC) {
+                continue;
+            }
+            map.put(attr.getName(), opsOfType(attr.getJavaType()));
+        }
+        return Map.copyOf(map);
+    }
+
     @SuppressWarnings("unchecked")
     private static Set<Attribute<?, ?>> attributesOf(Class<?> domainClass) {
         return (Set<Attribute<?, ?>>) (Set<?>) EntityManagerUtil.get()
                 .getMetamodel()
                 .entity(domainClass)
                 .getAttributes();
-    }
-
-    private static Class<?> wrap(Class<?> type) {
-        if (!type.isPrimitive()) {
-            return type;
-        }
-        return switch (type.getName()) {
-            case "byte" -> Byte.class;
-            case "short" -> Short.class;
-            case "int" -> Integer.class;
-            case "long" -> Long.class;
-            case "float" -> Float.class;
-            case "double" -> Double.class;
-            case "char" -> Character.class;
-            case "boolean" -> Boolean.class;
-            default -> type;
-        };
     }
 }

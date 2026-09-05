@@ -11,46 +11,55 @@ import org.springframework.stereotype.Component;
 @Component
 public class EnvironmentUtil implements EnvironmentAware {
 
-    public static Environment ENV;
-
-    public static String getProperty(String property) {
-        return ENV.getProperty(property);
-    }
+    private static Environment environment;
 
     public static boolean containsProperty(String key) {
-        return ENV.containsProperty(key);
+        return requireEnvironment().containsProperty(key);
+    }
+
+    public static String getProperty(String key) {
+        return requireEnvironment().getProperty(key);
     }
 
     public static String getProperty(String key, String defaultValue) {
-        return ENV.getProperty(key, defaultValue);
+        return requireEnvironment().getProperty(key, defaultValue);
     }
 
     public static @Nullable <T> T getProperty(String key, Class<T> targetType) {
-        return ENV.getProperty(key, targetType);
+        return requireEnvironment().getProperty(key, targetType);
     }
 
     public static <T> T getProperty(String key, Class<T> targetType, T defaultValue) {
-        return ENV.getProperty(key, targetType, defaultValue);
+        return requireEnvironment().getProperty(key, targetType, defaultValue);
     }
 
-    public static String getRequiredProperty(String key) throws IllegalStateException {
-        return ENV.getRequiredProperty(key);
+    public static String getRequiredProperty(String key) {
+        return requireEnvironment().getRequiredProperty(key);
     }
 
-    public static <T> T getRequiredProperty(String key, Class<T> targetType) throws IllegalStateException {
-        return ENV.getRequiredProperty(key, targetType);
+    public static <T> T getRequiredProperty(String key, Class<T> targetType) {
+        return requireEnvironment().getRequiredProperty(key, targetType);
     }
 
     public static String resolvePlaceholders(String text) {
-        return ENV.resolvePlaceholders(text);
+        return requireEnvironment().resolvePlaceholders(text);
     }
 
-    public static String resolveRequiredPlaceholders(String text) throws IllegalArgumentException {
-        return ENV.resolveRequiredPlaceholders(text);
+    public static String resolveRequiredPlaceholders(String text) {
+        return requireEnvironment().resolveRequiredPlaceholders(text);
+    }
+
+    private static Environment requireEnvironment() {
+        if (environment == null) {
+            throw new IllegalStateException("EnvironmentUtil is not initialized");
+        }
+        return environment;
     }
 
     @Override
     public void setEnvironment(@NonNull Environment environment) {
-        EnvironmentUtil.ENV = environment;
+        EnvironmentUtil.environment = environment;
+        log.info("{} initialized, activeProfiles={}", getClass().getSimpleName(),
+                String.join(",", environment.getActiveProfiles()));
     }
 }

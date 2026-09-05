@@ -3,40 +3,46 @@ package io.github.tcq1007.springbootutils.core;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceAware;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 
+import java.util.Locale;
+
 @Slf4j
 @Component
-public class I18nMessageUtil implements MessageSourceAware, SmartInitializingSingleton {
+public class I18nMessageUtil implements MessageSourceAware {
 
     private static MessageSource messageSource;
 
-    public static String getMessage(String code) {
-        return getMessage(code, null);
+    public static @Nullable String getMessage(String code) {
+        return getMessage(code, (Object[]) null);
     }
 
-    private static String getMessage(String code, Object @Nullable [] args) {
+    public static @Nullable String getMessage(String code, Object @Nullable ... args) {
+        Locale locale = LocaleContextHolder.getLocale();
         try {
-            return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
+            String message = requireMessageSource().getMessage(code, args, locale);
+            log.debug("resolved message code={}, locale={}", code, locale);
+            return message;
         } catch (NoSuchMessageException e) {
-            log.info("no message:{}", code);
+            log.debug("no message for code={}, locale={}", code, locale);
+            return null;
         }
-        return null;
+    }
+
+    private static MessageSource requireMessageSource() {
+        if (messageSource == null) {
+            throw new IllegalStateException("I18nMessageUtil is not initialized");
+        }
+        return messageSource;
     }
 
     @Override
     public void setMessageSource(@NonNull MessageSource messageSource) {
         I18nMessageUtil.messageSource = messageSource;
-    }
-
-    @Override
-    public void afterSingletonsInstantiated() {
-        String message = I18nMessageUtil.getMessage("user.login");
-        log.info(message);
+        log.info("{} initialized", getClass().getSimpleName());
     }
 }

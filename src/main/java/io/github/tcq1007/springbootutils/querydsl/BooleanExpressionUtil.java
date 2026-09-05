@@ -11,15 +11,15 @@ import java.util.function.BiFunction;
 
 public final class BooleanExpressionUtil {
 
+    private static final PathBuilderFactory PATH_BUILDER_FACTORY = new PathBuilderFactory();
+
     private BooleanExpressionUtil() {
     }
 
     public static <T> BooleanExpression custom(Class<T> domainClass, String fieldName, Object value,
                                                BiFunction<Path<?>, Object, BooleanExpression> operator) {
-        PathBuilderFactory pathBuilderFactory = new PathBuilderFactory();
-        PathBuilder<T> pathBuilder = pathBuilderFactory.create(domainClass);
-        Path<?> path = pathBuilder.get(fieldName);
-        return operator.apply(path, value);
+        PathBuilder<T> pathBuilder = PATH_BUILDER_FACTORY.create(domainClass);
+        return operator.apply(pathBuilder.get(fieldName), value);
     }
 
     public static <T> Path<T> rootPath(Class<T> domainClass) {

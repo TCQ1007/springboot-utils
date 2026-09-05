@@ -1,6 +1,7 @@
 package io.github.tcq1007.springbootutils.querydsl;
 
 import jakarta.persistence.EntityManager;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.BeansException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -14,21 +15,24 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Component
 @ConditionalOnClass({ QuerydslJpaPredicateExecutor.class, EntityManager.class, SimpleEntityPathResolver.class })
 public class QueryDslRepositoryUtil implements ApplicationContextAware {
 
-    private static final Map<Class<?>, QuerydslJpaPredicateExecutor<?>> querydslJpaPredicateExecutorMap = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, QuerydslJpaPredicateExecutor<?>> EXECUTORS = new ConcurrentHashMap<>();
     private static ApplicationContext applicationContext;
 
     @SuppressWarnings("unchecked")
     public static <T> QuerydslJpaPredicateExecutor<T> getQuerydslJpaPredicateExecutor(Class<T> domainClass) {
-        return (QuerydslJpaPredicateExecutor<T>)
-                querydslJpaPredicateExecutorMap.computeIfAbsent(domainClass,
-                        QueryDslRepositoryUtil::genQueryDslJpaPredicateExecutor);
+        return (QuerydslJpaPredicateExecutor<T>) EXECUTORS.computeIfAbsent(domainClass, clazz -> {
+            QuerydslJpaPredicateExecutor<?> executor = createExecutor(clazz);
+            log.debug("created QuerydslJpaPredicateExecutor for {}", clazz.getName());
+            return executor;
+        });
     }
 
-    public static <T> QuerydslJpaPredicateExecutor<T> genQueryDslJpaPredicateExecutor(Class<T> domainClass) {
+    private static <T> QuerydslJpaPredicateExecutor<T> createExecutor(Class<T> domainClass) {
         EntityManager entityManager = entityManager();
         return new QuerydslJpaPredicateExecutor<>(
                 JpaEntityInformationSupport.getEntityInformation(domainClass, entityManager),
@@ -39,9 +43,7 @@ public class QueryDslRepositoryUtil implements ApplicationContextAware {
 
     private static EntityManager entityManager() {
         if (applicationContext == null) {
-            throw new IllegalStateException(
-                    "QueryDslRepositoryUtil not properly initialized. "
-                            + "Please ensure this bean is managed by Spring and ApplicationContext is set.");
+            throw new IllegalStateException("QueryDslRepositoryUtil is not initialized");
         }
         return applicationContext.getBean(EntityManager.class);
     }
@@ -49,5 +51,6 @@ public class QueryDslRepositoryUtil implements ApplicationContextAware {
     @Override
     public void setApplicationContext(@NonNull ApplicationContext applicationContext) throws BeansException {
         QueryDslRepositoryUtil.applicationContext = applicationContext;
+        log.info("{} initialized", getClass().getSimpleName());
     }
 }

@@ -15,27 +15,14 @@ import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public class SpecificationUtil {
+public final class SpecificationUtil {
 
-//    public static <T> PredicateSpecification<T> build(MultiValuedMap<String, Object> paramsMap) {
-//        Spec<T> s = Spec.of();
-//        List<PredicateSpecification<T>> list = new ArrayList<>();
-//        for (String key : paramsMap.keySet()) {
-//            Collection<Object> values = paramsMap.get(key);
-//            if (values == null || values.isEmpty()) {
-//                continue;
-//            }
-//            if (values.size() == 1) {
-//                list.add(s.eq(key, values.iterator().next()));
-//            } else {
-//                list.add(s.in(key, values));
-//            }
-//        }
-//        return PredicateSpecification.allOf(list);
-//    }
+    private SpecificationUtil() {
+    }
 
     /**
-     * 绠楀瓙甯搁噺锛氫簩鍏冿紙path + value锛変笌涓夊厓锛堥渶瑕?CriteriaBuilder锛夊垎寮€銆?     */
+     * 算子常量：二元（path + value）与三元（需要 CriteriaBuilder）分开。
+     */
     public interface FConstant {
 
         static <R> BiFunction<Path<R>, R, Predicate> eq() {
@@ -120,8 +107,9 @@ public class SpecificationUtil {
     }
 
     /**
-     * 甯﹀疄浣撶被鍨嬪弬鏁扮殑鏉′欢宸ュ巶銆傚厛 {@code Spec<UserEntity> s = Spec.of()}锛屽啀閾惧紡鎷兼潯浠讹紝
-     * {@code T} 涓嶄細鎺夋垚 {@code Object}銆?     */
+     * 带实体类型参数的条件工厂。先 {@code Spec<UserEntity> s = Spec.of()}，再链式拼条件，
+     * {@code T} 不会掉成 {@code Object}。
+     */
     public static final class Spec<T> {
 
         private Spec() {
@@ -221,9 +209,13 @@ public class SpecificationUtil {
     }
 
     /**
-     * 寤鸿鐢?{@link PredicateSpecificationS}锛泏@link Spec} 榛樿璧板畠銆?     */
+     * 建议使用 {@link PredicateSpecificationS}，{@link Spec} 默认走它。
+     */
     @Deprecated
-    public static class SpecificationS {
+    public static final class SpecificationS {
+
+        private SpecificationS() {
+        }
 
         public static <R, T> Specification<T> q(String fieldName, Function<Path<R>, Predicate> pf) {
             return (root, _, builder) -> builder.and(pf.apply(root.get(fieldName)));
@@ -261,7 +253,10 @@ public class SpecificationUtil {
         }
     }
 
-    public static class PredicateSpecificationS {
+    public static final class PredicateSpecificationS {
+
+        private PredicateSpecificationS() {
+        }
 
         public static <R, T> PredicateSpecification<T> q(String fieldName, Function<Path<R>, Predicate> pf) {
             return (root, _) -> pf.apply(root.get(fieldName));
