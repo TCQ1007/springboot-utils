@@ -1,0 +1,80 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'io.spring.dependency-management' version "${springDependencyManagementVersion}"
+}
+
+group = 'io.github.tcq1007'
+version = '0.0.1'
+description = 'Spring Boot utils'
+
+repositories {
+    maven { url 'https://maven.aliyun.com/repository/public' }
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    withSourcesJar()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+        mavenBom "com.querydsl:querydsl-bom:${querydslVersion}"
+    }
+    dependencies {
+        dependency "org.apache.commons:commons-lang3:${commonsLang3Version}"
+        dependency "commons-io:commons-io:${commonsIoVersion}"
+    }
+}
+
+dependencies {
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework.data:spring-data-commons'
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compileOnly 'org.springframework.boot:spring-boot-persistence'
+    compileOnly 'org.apache.commons:commons-lang3'
+    compileOnly 'org.slf4j:slf4j-api'
+    compileOnly 'com.querydsl:querydsl-jpa::jakarta'
+    compileOnly 'tools.jackson.core:jackson-databind'
+    compileOnly 'commons-io:commons-io'
+    compileOnly 'org.springframework.cloud:spring-cloud-context'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    api 'nl.talsmasoftware:lazy4j:2.0.5'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    failOnError = false
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = project.name
+                description = project.description
+            }
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
+}
