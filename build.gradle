@@ -1,6 +1,8 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'signing'
+    id 'com.vanniktech.maven.publish' version '0.34.0'
     id 'io.spring.dependency-management' version "${springDependencyManagementVersion}"
 }
 
@@ -17,7 +19,6 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
-    withSourcesJar()
 }
 
 dependencyManagement {
@@ -64,17 +65,56 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            pom {
-                name = project.name
-                description = project.description
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+
+    pom {
+        name = 'springboot-utils'
+        description = project.description
+        inceptionYear = '2026'
+        url = 'https://github.com/TCQ1007/springboot-utils'
+        licenses {
+            license {
+                name = 'The Apache License, Version 2.0'
+                url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution = 'repo'
             }
         }
+        developers {
+            developer {
+                id = 'TCQ1007'
+                name = 'tcq1007'
+                email = '1007281088@qq.com'
+                url = 'https://github.com/TCQ1007'
+            }
+        }
+        scm {
+            connection = 'scm:git:git://github.com/TCQ1007/springboot-utils.git'
+            developerConnection = 'scm:git:ssh://git@github.com/TCQ1007/springboot-utils.git'
+            url = 'https://github.com/TCQ1007/springboot-utils'
+        }
     }
+}
+
+signing {
+    required = {
+        gradle.taskGraph.allTasks.any { task ->
+            task.name.toLowerCase().contains('mavencentral')
+        }
+    }
+    useGpgCmd()
+}
+
+publishing {
     repositories {
-        mavenLocal()
+        maven {
+            name = 'GitHubPackages'
+            url = uri('https://maven.pkg.github.com/TCQ1007/springboot-utils')
+            credentials {
+                username = findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR') ?: 'TCQ1007'
+                password = findProperty('gpr.token') ?: System.getenv('GITHUB_TOKEN') ?: System.getenv('GH_TOKEN')
+            }
+        }
     }
 }
