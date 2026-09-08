@@ -34,7 +34,9 @@ dependencyManagement {
 }
 
 dependencies {
-    compileOnly 'org.springframework:spring-context'
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework:spring-core'
+    implementation 'org.springframework.boot:spring-boot'
     compileOnly 'org.springframework.data:spring-data-commons'
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
     compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
