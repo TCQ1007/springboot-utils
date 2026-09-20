@@ -30,24 +30,26 @@ dependencyManagement {
     dependencies {
         dependency "org.apache.commons:commons-lang3:${commonsLang3Version}"
         dependency "commons-io:commons-io:${commonsIoVersion}"
+        dependency "org.apache.commons:commons-collections4:${commonsCollections4Version}"
     }
 }
 
 dependencies {
-    implementation 'org.springframework:spring-context'
-    implementation 'org.springframework:spring-core'
-    implementation 'org.springframework.boot:spring-boot'
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-core'
+    compileOnly 'org.springframework.boot:spring-boot'
     compileOnly 'org.springframework.data:spring-data-commons'
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
     compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
     compileOnly 'org.springframework.boot:spring-boot-persistence'
     compileOnly 'org.apache.commons:commons-lang3'
+    compileOnly 'org.apache.commons:commons-collections4'
     compileOnly 'org.slf4j:slf4j-api'
     compileOnly 'com.querydsl:querydsl-jpa::jakarta'
     compileOnly 'tools.jackson.core:jackson-databind'
     compileOnly 'commons-io:commons-io'
     compileOnly 'org.springframework.cloud:spring-cloud-context'
-
+    compileOnly 'com.teamscale:classindex:4.0.0'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
