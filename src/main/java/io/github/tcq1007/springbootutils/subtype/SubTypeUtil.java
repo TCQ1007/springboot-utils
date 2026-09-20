@@ -29,11 +29,16 @@ public class SubTypeUtil {
      * @return 不可变的子类列表，可能为空
      */
     @SuppressWarnings("unchecked")
-    public static <T> List<Class<? extends T>> getSubTypes(Class<T> superClass) {
+    public static <T> List<Class<? extends T>> getSubTypesByType(Class<T> superClass) {
         // computeIfAbsent 在 key 不存在时才执行 lambda，且保证原子性
         List<Class<?>> raw = CACHE.computeIfAbsent(superClass, SubTypeUtil::load);
         // 由于 load 时按 superClass 查询，泛型是安全的
         return (List<Class<? extends T>>) (List<?>) Collections.unmodifiableList(raw);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<Class<?>> getSubTypes(Class<?> superClass) {
+        return CACHE.computeIfAbsent(superClass, SubTypeUtil::load);
     }
 
     /**

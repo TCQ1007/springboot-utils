@@ -1,4 +1,4 @@
-package io.github.tcq1007.springbootutils.ddd.annotation;
+package io.github.tcq1007.springbootutils.ddd.interfaces;
 
 /**
  * 聚合根标记接口：对外唯一入口，维护聚合内不变量。

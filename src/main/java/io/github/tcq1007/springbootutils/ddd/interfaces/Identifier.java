@@ -1,4 +1,4 @@
-package io.github.tcq1007.springbootutils.ddd.annotation;
+package io.github.tcq1007.springbootutils.ddd.interfaces;
 
 /**
  * 标识符值对象：聚合根 / 实体的 typed id。

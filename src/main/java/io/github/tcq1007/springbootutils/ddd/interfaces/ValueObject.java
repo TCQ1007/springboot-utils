@@ -1,4 +1,4 @@
-package io.github.tcq1007.springbootutils.ddd.annotation;
+package io.github.tcq1007.springbootutils.ddd.interfaces;
 
 import java.io.Serializable;
 

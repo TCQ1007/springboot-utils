@@ -31,6 +31,7 @@ dependencyManagement {
         dependency "org.apache.commons:commons-lang3:${commonsLang3Version}"
         dependency "commons-io:commons-io:${commonsIoVersion}"
         dependency "org.apache.commons:commons-collections4:${commonsCollections4Version}"
+        dependency "com.teamscale:classindex:${classindexVersion}"
     }
 }
 
